@@ -1,0 +1,97 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        // First, backup the data
+        $backup = DB::table('passports')->get();
+        
+        // Drop the table
+        Schema::dropIfExists('passports');
+        
+        // Recreate the table with the modified column
+        Schema::create('passports', function (Blueprint $table) {
+            $table->id();
+            $table->string('full_name');
+            $table->string('nationality');
+            $table->string('passport_number')->unique();
+            $table->string('unique_code')->unique()->nullable();
+            $table->date('date_of_birth');
+            $table->date('residence_expiry_date');
+            $table->string('phone_number')->nullable();
+            $table->string('mobile_number');
+            $table->enum('passport_status', ['قيد الانجاز', 'جاهز للاستلام', 'تم تسليمه']);
+            $table->date('passport_delivery_date');
+            $table->string('transaction_type', 255); // Modified to handle Arabic text
+            $table->enum('payment_status', ['pending', 'paid', 'cancelled']);
+            $table->string('delivered_by');
+            $table->text('address');
+            $table->string('zipcode')->nullable();
+            $table->string('personal_photo')->nullable();
+            $table->string('passport_photo')->nullable();
+            $table->string('email')->nullable();
+            $table->string('sponsor_name')->nullable();
+            $table->string('relationship')->nullable();
+            $table->text('extension_reason')->nullable();
+            $table->string('barcode')->nullable();
+            $table->text('signature_data')->nullable();
+            $table->boolean('no_signature')->default(false);
+            $table->string('no_signature_reason')->nullable();
+            $table->timestamps();
+        });
+        
+        // Restore the data
+        foreach ($backup as $record) {
+            DB::table('passports')->insert((array) $record);
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        // This is a destructive migration, so we'll just drop and recreate the table
+        Schema::dropIfExists('passports');
+        
+        // Recreate the original table structure
+        Schema::create('passports', function (Blueprint $table) {
+            $table->id();
+            $table->string('full_name');
+            $table->string('nationality');
+            $table->string('passport_number')->unique();
+            $table->string('unique_code')->unique()->nullable();
+            $table->date('date_of_birth');
+            $table->date('residence_expiry_date');
+            $table->string('phone_number')->nullable();
+            $table->string('mobile_number');
+            $table->enum('passport_status', ['قيد الانجاز', 'جاهز للاستلام', 'تم تسليمه']);
+            $table->date('passport_delivery_date');
+            $table->string('transaction_type');
+            $table->enum('payment_status', ['pending', 'paid', 'cancelled']);
+            $table->string('delivered_by');
+            $table->text('address');
+            $table->string('zipcode')->nullable();
+            $table->string('personal_photo')->nullable();
+            $table->string('passport_photo')->nullable();
+            $table->string('email')->nullable();
+            $table->string('sponsor_name')->nullable();
+            $table->string('relationship')->nullable();
+            $table->text('extension_reason')->nullable();
+            $table->string('barcode')->nullable();
+            $table->text('signature_data')->nullable();
+            $table->boolean('no_signature')->default(false);
+            $table->string('no_signature_reason')->nullable();
+            $table->timestamps();
+        });
+    }
+}; 

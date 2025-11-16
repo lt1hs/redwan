@@ -1,0 +1,155 @@
+// Use the alias path instead of relative path
+@import '@/quasar-variables.scss';
+
+// Import icon libraries
+@import '@quasar/extras/material-icons/material-icons.css';
+@import '@quasar/extras/material-icons-outlined/material-icons-outlined.css';
+
+// Fix the node_modules import path
+@import '~vazirmatn/Vazirmatn-Variable-font-face.css';
+body {
+  background: #f8f7fa;
+  // color: #2f2b3d;
+}
+body.body--light,
+body.body--light .q-table__card {
+  color: #2f2b3dad;
+}
+a {
+  color: #828c91;
+  text-decoration: none;
+}
+
+// .menu-list .q-item {
+//   border-radius: 10px;
+//   margin-top: 8px;
+//   min-height: 30px;
+//   padding-left: 6px;
+// }
+
+li::marker {
+  color: var(--q-negative);
+}
+
+.hide-control .q-field__control {
+  display: none;
+}
+
+.q-item__section--avatar {
+  min-width: 36px;
+}
+
+/* Make outlined style follow Material Design guidelines. It's a known Quasar issue. */
+/* Look at: https://github.com/quasarframework/quasar/issues/3262 */
+
+.q-field--outlined.q-field--labeled.q-field--float .q-field__label {
+  transform: translateY(-80%) scale(0.75);
+  z-index: 1;
+  background-color: white;
+}
+.q-field--labeled.q-field--dense .q-field__native {
+  padding: 6px 0;
+}
+
+.q-field--outlined.q-field--labeled .q-field__label {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+.q-field--auto-height.q-field--dense.q-field--labeled .q-field__control-container {
+  padding-top: 0;
+}
+
+.q-textarea.q-field--dense.q-field--labeled .q-field__control-container {
+  padding-top: 2px;
+}
+.q-textarea.q-field--dense.q-field--labeled .q-field__native {
+  padding-top: 9px;
+}
+
+.body--dark {
+  .q-field--outlined.q-field--labeled.q-field--float .q-field__label {
+    background-color: var(--q-dark);
+  }
+}
+
+/* */
+
+/* header & toolbar */
+
+.q-header {
+  max-width: 1440px;
+  background: none;
+  color: unset;
+}
+
+.q-header .q-toolbar {
+  border-radius: $generic-border-radius;
+  backdrop-filter: blur(6px);
+  padding-top: 13px;
+  padding-bottom: 13px;
+  background: rgb(255, 255, 255, 0.9);
+  box-shadow: $layout-shadow;
+}
+
+body.body--dark .q-header .q-toolbar {
+  box-shadow: $layout-shadow-dark;
+  background: rgb($dark, 0.9);
+}
+
+/* blur top of toolbar */
+
+.q-header::after {
+  position: absolute;
+  z-index: -1;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+
+  background-repeat: repeat;
+  block-size: calc(64px + 1.5rem);
+  content: '';
+  inset-block-start: -1rem;
+  inset-inline-end: 0;
+  inset-inline-start: 0;
+  -webkit-mask: linear-gradient(black, black 18%, transparent 100%);
+  mask: linear-gradient(black, black 18%, transparent 100%);
+}
+
+body.body--dark .q-header::after {
+  background: linear-gradient(
+    180deg,
+    rgba($dark-page, 70%) 44%,
+    rgba($dark-page, 43%) 73%,
+    rgba($dark-page, 0%)
+  );
+}
+body.body--light .q-header::after {
+  background: linear-gradient(
+    180deg,
+    rgba(#f8f7fa, 70%) 44%,
+    rgba(#f8f7fa, 43%) 73%,
+    rgba(#f8f7fa, 0%)
+  );
+}
+/* */
+
+/* Customize drawer scrollbar */
+.q-scrollarea--dark .q-scrollarea__thumb {
+  background: rgb(74, 80, 114);
+}
+.q-scrollarea__thumb {
+  background: rgb(219, 218, 222);
+}
+
+/* customize expanded & hovered menu colors */
+
+body.desktop .q-expansion-item--expanded > .q-expansion-item__container > .q-item .q-focus-helper {
+  background: currentColor;
+  opacity: 0.06;
+}
+
+/* style active menu item */
+.q-item.q-router-link--active {
+  background: linear-gradient(72.47deg, $primary 22.16%, rgba($primary, 0.7) 76.47%) !important;
+  box-shadow: 0 2px 6px rgba($primary, 0.48);
+  color: white;
+}
