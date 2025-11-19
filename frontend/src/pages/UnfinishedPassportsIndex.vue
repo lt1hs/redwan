@@ -17,15 +17,15 @@ const importFile = ref<File | null>(null);
 
 const statusFilters = [
   { label: 'الكل', value: 'all' },
-  { label: 'مسودة', value: 'مسودة' },
   { label: 'قيد المراجعة', value: 'قيد المراجعة' },
-  { label: 'جاهز للنقل', value: 'جاهز للنقل' }
+  { label: 'جاهز للنقل', value: 'جاهز للنقل' },
+  { label: 'حذف', value: 'حذف' }
 ];
 
 const statusOptions = [
-  { label: 'مسودة', value: 'مسودة', color: 'grey' },
   { label: 'قيد المراجعة', value: 'قيد المراجعة', color: 'warning' },
-  { label: 'جاهز للنقل', value: 'جاهز للنقل', color: 'positive' }
+  { label: 'جاهز للنقل', value: 'جاهز للنقل', color: 'positive' },
+  { label: 'حذف', value: 'حذف', color: 'negative' }
 ];
 
 const filteredRows = computed(() => {
@@ -57,9 +57,16 @@ const columns: QTableColumn[] = [
   { name: 'nationality', label: 'الجنسية', field: 'nationality', sortable: true, align: 'left' },
   { name: 'mobile_number', label: 'رقم الهاتف', field: 'mobile_number', sortable: true, align: 'left' },
   { name: 'completion_status', label: 'حالة الإكمال', field: 'completion_status', sortable: true, align: 'left' },
+  { name: 'updated_status', label: 'حالة التحديث', field: 'updated_status', sortable: false, align: 'center' },
   { name: 'created_at', label: 'تاريخ الإنشاء', field: 'created_at', sortable: true, align: 'left', format: (val) => moment(val).format('jYYYY/jMM/jDD') },
   { name: 'actions', label: 'اجراءات', field: 'actions', sortable: false, align: 'right' }
 ];
+
+const isRecentlyUpdated = (row: any) => {
+  const updatedAt = moment(row.updated_at);
+  const createdAt = moment(row.created_at);
+  return updatedAt.isAfter(createdAt.add(1, 'minute'));
+};
 
 const exportToExcel = () => {
   const exportData = filteredRows.value.map((row) => ({
@@ -203,7 +210,7 @@ function getStatusColor(status: string) {
   switch (status) {
     case 'جاهز للنقل': return 'positive';
     case 'قيد المراجعة': return 'warning';
-    case 'مسودة': return 'grey';
+    case 'حذف': return 'negative';
     default: return 'grey';
   }
 }
@@ -333,6 +340,19 @@ function getStatusColor(status: string) {
                   </q-item>
                 </q-list>
               </q-btn-dropdown>
+            </q-td>
+          </template>
+
+          <template v-slot:body-cell-updated_status="props">
+            <q-td :props="props">
+              <q-chip
+                v-if="isRecentlyUpdated(props.row)"
+                color="info"
+                text-color="white"
+                dense
+                icon="update"
+                label="محدث"
+              />
             </q-td>
           </template>
 

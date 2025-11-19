@@ -26,13 +26,48 @@ use App\Http\Controllers\Api\Admin\SmsController;
 
 // PUBLIC ROUTES - NO MIDDLEWARE
 Route::get('unfinished-passports-public', [\App\Http\Controllers\UnfinishedPassportController::class, 'index']);
+Route::post('unfinished-passports-public', function(\Illuminate\Http\Request $request) {
+    $data = $request->except(['personal_photo', 'passport_photo', 'residence_photo', 'passport_extension_photo']);
+    
+    // Handle file uploads
+    $photoFields = ['personal_photo', 'passport_photo', 'residence_photo', 'passport_extension_photo'];
+    foreach ($photoFields as $field) {
+        if ($request->hasFile($field)) {
+            $file = $request->file($field);
+            $filename = time() . '_' . $field . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('storage/uploads'), $filename);
+            $data[$field] = '/storage/uploads/' . $filename;
+        }
+    }
+    
+    $passport = \App\Models\UnfinishedPassport::create($data);
+    return $passport;
+});
 Route::get('unfinished-passports-public/{id}', function($id) {
     return \App\Models\UnfinishedPassport::findOrFail($id);
 });
 Route::post('unfinished-passports-public/{id}', function(\Illuminate\Http\Request $request, $id) {
     $passport = \App\Models\UnfinishedPassport::findOrFail($id);
-    $passport->update($request->all());
+    $data = $request->except(['personal_photo', 'passport_photo', 'residence_photo', 'passport_extension_photo']);
+    
+    // Handle file uploads
+    $photoFields = ['personal_photo', 'passport_photo', 'residence_photo', 'passport_extension_photo'];
+    foreach ($photoFields as $field) {
+        if ($request->hasFile($field)) {
+            $file = $request->file($field);
+            $filename = time() . '_' . $field . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('storage/uploads'), $filename);
+            $data[$field] = '/storage/uploads/' . $filename;
+        }
+    }
+    
+    $passport->update($data);
     return $passport;
+});
+Route::delete('unfinished-passports-public/{id}', function($id) {
+    $passport = \App\Models\UnfinishedPassport::findOrFail($id);
+    $passport->delete();
+    return response()->json(['message' => 'Deleted successfully']);
 });
 
 // OPTIONS route for CORS preflight
