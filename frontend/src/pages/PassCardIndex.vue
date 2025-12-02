@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { useCardsStore } from '@/stores/cards';
 import { useRouter } from 'vue-router';
@@ -19,7 +19,24 @@ const pagination = ref({
   rowsNumber: 0
 });
 
+const perPageOptions = [10, 50, 100, 0]; // 0 represents "all"
+
+const perPageLabels = {
+  10: '10',
+  50: '50', 
+  100: '100',
+  0: 'الكل'
+};
+
 const columns: QTableColumn[] = [
+  {
+    name: 'index',
+    required: true,
+    label: 'التسلسل',
+    align: 'center' as const,
+    field: (row: any) => row.index,
+    sortable: false
+  },
   {
     name: 'full_name_fa',
     required: true,
@@ -108,10 +125,11 @@ async function onRequest(props: any) {
   loading.value = true;
 
   try {
-    await cardsStore.listAll();
+    await cardsStore.list(page, rowsPerPage === 0 ? 'all' : rowsPerPage);
+    
+    pagination.value.page = cardsStore.currentPage;
+    pagination.value.rowsPerPage = rowsPerPage;
     pagination.value.rowsNumber = cardsStore.total;
-    pagination.value.page = 1;
-    pagination.value.rowsPerPage = cardsStore.total;
     pagination.value.sortBy = sortBy;
     pagination.value.descending = descending;
   } catch (error) {
@@ -125,6 +143,11 @@ async function onRequest(props: any) {
     loading.value = false;
   }
 }
+
+const onPerPageChange = () => {
+  pagination.value.page = 1;
+  onRequest({ pagination: pagination.value });
+};
 
 onMounted(() => {
   cardsStore.cards = [];
@@ -237,6 +260,24 @@ function getCardTypeName(cardType: string): string {
           </q-input>
         </div>
         <q-separator />
+        
+        <!-- Controls Row -->
+        <div class="row items-center justify-between q-pa-md">
+          <div class="row items-center q-gutter-md">
+            <!-- Per Page Selector -->
+            <q-select
+              v-model="pagination.rowsPerPage"
+              :options="perPageOptions"
+              :option-label="(opt) => perPageLabels[opt]"
+              label="عدد العناصر"
+              dense
+              outlined
+              style="min-width: 120px"
+              @update:model-value="onPerPageChange"
+            />
+          </div>
+        </div>
+        
         <q-table
           flat
           :loading="loading"
@@ -244,8 +285,8 @@ function getCardTypeName(cardType: string): string {
           :columns="columns"
           row-key="id"
           :filter="search"
-          :rows-per-page-options="[0]"
-          hide-pagination
+          v-model:pagination="pagination"
+          @request="onRequest"
           @row-click="handleRowClick"
           class="clickable-rows"
         >

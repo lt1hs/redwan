@@ -578,6 +578,16 @@ const router = createRouter({
             }
           ]
         },
+        // Users Management Section
+        {
+          path: '/users',
+          meta: {
+            breadCrumbTitle: 'إدارة المشرفين',
+            breadCrumbIcon: 'o_people'
+          },
+          component: () => import('@/pages/UsersIndex.vue'),
+          name: 'UsersIndex'
+        },
         {
           path: 'roles',
           meta: {
@@ -643,6 +653,16 @@ const router = createRouter({
               props: true
             }
           ]
+        },
+        {
+          path: '/profile',
+          meta: {
+            title: 'الملف الشخصي',
+            breadCrumbTitle: 'الملف الشخصي',
+            breadCrumbIcon: 'o_person'
+          },
+          component: () => import('@/pages/ProfilePage.vue'),
+          name: 'Profile'
         }
       ]
     },

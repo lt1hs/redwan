@@ -30,26 +30,31 @@ class ContractController extends Controller
     {
         $request->merge($this->convertArabicNumbersToEnglish($request->all()));
 
+        // Auto-generate contract number if not provided
+        if (empty($request->contract_number)) {
+            $request->merge(['contract_number' => $this->generateContractNumber()]);
+        }
+
         $validated = $request->validate([
             'contract_number' => 'required|unique:contracts',
             'contract_date' => 'required|date',
-            'contract_type' => 'required|string',
+            'contract_type' => 'nullable|string',
             'contract_place' => 'nullable|string',
             'husband_name' => 'required|string',
             'husband_nationality' => 'required|string',
             'husband_id_number' => 'nullable|string',
-            'husband_birth_date' => 'nullable|date',
-            'husband_phone' => 'required|string',
+            'husband_birth_date' => 'nullable|string',
+            'husband_phone' => 'nullable|string',
             'husband_address' => 'nullable|string',
             'husband_passport_number' => 'nullable|string',
             'wife_name' => 'required|string',
             'wife_nationality' => 'required|string',
             'wife_id_number' => 'nullable|string',
-            'wife_birth_date' => 'nullable|date',
+            'wife_birth_date' => 'nullable|string',
             'wife_phone' => 'nullable|string',
             'wife_address' => 'nullable|string',
             'wife_passport_number' => 'nullable|string',
-            'present_dowry' => 'required|numeric',
+            'present_dowry' => 'nullable|numeric',
             'deferred_dowry' => 'nullable|numeric',
             'husband_conditions_arabic' => 'nullable|string',
             'husband_conditions_persian' => 'nullable|string',
@@ -90,23 +95,23 @@ class ContractController extends Controller
         $validated = $request->validate([
             'contract_number' => ['required', Rule::unique('contracts')->ignore($contract->id)],
             'contract_date' => 'required|date',
-            'contract_type' => 'required|string',
+            'contract_type' => 'nullable|string',
             'contract_place' => 'nullable|string',
             'husband_name' => 'required|string',
             'husband_nationality' => 'required|string',
             'husband_id_number' => 'nullable|string',
-            'husband_birth_date' => 'nullable|date',
-            'husband_phone' => 'required|string',
+            'husband_birth_date' => 'nullable|string',
+            'husband_phone' => 'nullable|string',
             'husband_address' => 'nullable|string',
             'husband_passport_number' => 'nullable|string',
             'wife_name' => 'required|string',
             'wife_nationality' => 'required|string',
             'wife_id_number' => 'nullable|string',
-            'wife_birth_date' => 'nullable|date',
-            'wife_phone' => 'required|string',
+            'wife_birth_date' => 'nullable|string',
+            'wife_phone' => 'nullable|string',
             'wife_address' => 'nullable|string',
             'wife_passport_number' => 'nullable|string',
-            'present_dowry' => 'required|numeric',
+            'present_dowry' => 'nullable|numeric',
             'deferred_dowry' => 'nullable|numeric',
             'husband_conditions_arabic' => 'nullable|string',
             'husband_conditions_persian' => 'nullable|string',
@@ -153,5 +158,22 @@ class ContractController extends Controller
             }
         }
         return $data;
+    }
+
+    /**
+     * Generate a unique contract number.
+     *
+     * @return string
+     */
+    private function generateContractNumber(): string
+    {
+        $year = date('Y');
+        $lastContract = Contract::whereYear('created_at', $year)
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        $nextNumber = $lastContract ? (int)substr($lastContract->contract_number, -4) + 1 : 1;
+        
+        return $year . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 }

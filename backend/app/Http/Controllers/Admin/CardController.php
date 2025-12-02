@@ -14,13 +14,26 @@ use Illuminate\Support\Facades\Validator;
 
 class CardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $cards = Card::with(['passport', 'familyCards'])
-            ->whereNull('parent_card_id')  // Get only main cards
-            ->latest()
-            ->get();
+        $query = Card::with(['passport', 'familyCards'])
+            ->latest();
 
+        $perPage = $request->input('per_page', 10);
+        if ($perPage === 'all') {
+            $cards = $query->get();
+            // Add index to each card
+            $cards->each(function ($card, $index) {
+                $card->index = $index + 1;
+            });
+            return response()->json(['data' => $cards]);
+        }
+
+        $cards = $query->paginate((int)$perPage);
+        // Add index to each card based on pagination
+        $cards->getCollection()->each(function ($card, $index) use ($cards) {
+            $card->index = (($cards->currentPage() - 1) * $cards->perPage()) + $index + 1;
+        });
         return response()->json($cards);
     }
 

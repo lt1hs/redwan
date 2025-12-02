@@ -9,18 +9,8 @@ const BASE_URL =
 
 console.log('Using API base URL:', BASE_URL);
 
-// Function to get CSRF token from cookies
-// This helper function is used internally by the interceptor.
-const getXsrfTokenFromCookie = (): string | null => {
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'XSRF-TOKEN') {
-      return decodeURIComponent(value);
-    }
-  }
-  return null;
-};
+// Note: We're using API token authentication (Bearer tokens) with Sanctum
+// CSRF tokens are not needed for API routes - only for cookie-based session auth
 
 // Function to extract JSON from response that might contain PHP warnings
 function extractJSONFromResponse(responseData: any) {
@@ -46,61 +36,30 @@ function extractJSONFromResponse(responseData: any) {
 const api = axios.create({
   baseURL: BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
     'X-Requested-With': 'XMLHttpRequest'
   },
-  withCredentials: true // Enable sending cookies with requests (essential for Sanctum)
+  withCredentials: false // We're using API tokens, not cookies
 });
 
 // Add request interceptor to add the auth token and CSRF token
 api.interceptors.request.use(
   async (config) => {
+    // Set Content-Type to application/json only if not FormData
+    if (config.headers && !(config.data instanceof FormData)) {
+      config.headers['Content-Type'] = 'application/json';
+    }
+
     // Add Authorization header with JWT token if available in localStorage
     const token = localStorage.getItem('auth_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // CSRF Token handling for non-GET requests
-    // Laravel Sanctum expects X-XSRF-TOKEN header for POST/PUT/DELETE
-    if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase() || '')) {
-      let xsrfToken = getXsrfTokenFromCookie();
-
-      if (!xsrfToken) {
-        // If no XSRF-TOKEN cookie is found, attempt to fetch it from Laravel
-        console.log('No XSRF-TOKEN cookie found, fetching from /sanctum/csrf-cookie...');
-        try {
-          // This call also sends the 'withCredentials: true' to ensure the cookie is set
-          const csrfResponse = await axios.get(`${BASE_URL}/sanctum/csrf-cookie`, {
-            withCredentials: true,
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          });
-
-          if (csrfResponse.status === 204) {
-            xsrfToken = getXsrfTokenFromCookie(); // Try to get it again after the request
-            if (xsrfToken) {
-              console.log('Successfully fetched new XSRF-TOKEN cookie.');
-            } else {
-              console.warn('CSRF cookie was not set after /sanctum/csrf-cookie request.');
-            }
-          }
-        } catch (csrfError) {
-          console.error('Failed to fetch CSRF cookie from /sanctum/csrf-cookie:', csrfError);
-          // If CSRF token cannot be obtained, the request might fail, but let it proceed to get a 419
-        }
-      }
-
-      // Add the X-XSRF-TOKEN header if a token is available
-      if (xsrfToken && config.headers) {
-        config.headers['X-XSRF-TOKEN'] = xsrfToken;
-        console.log('X-XSRF-TOKEN header set for request:', xsrfToken.substring(0, 10) + '...');
-      } else {
-        console.warn('X-XSRF-TOKEN header could not be set for non-GET request.');
-      }
-    }
+    // CSRF Token handling is NOT needed for API token authentication
+    // We're using Bearer tokens (Sanctum API tokens), not session-based auth
+    // CSRF tokens are only needed for cookie-based authentication
+    // Skip CSRF token handling entirely for API routes
 
     // Log the request configuration for debugging
     if (import.meta.env.NODE_ENV === 'development') {
@@ -151,43 +110,14 @@ api.interceptors.response.use(
       return Promise.reject(error); // Reject the original error
     }
 
-    // Handle 419 CSRF Token Mismatch
-    // This part should be triggered only if other CSRF bypasses fail or for web routes.
-    // Given previous issues, if this is still happening after kernel/route config, it's problematic.
+    // Handle 419 CSRF Token Mismatch (shouldn't happen with API token auth)
     if (error.response?.status === 419) {
-      console.error('419 CSRF Token Mismatch detected. Attempting to refresh token and retry request.');
-
-      // Prevent infinite loops if retry fails
-      if (originalRequest._retry) {
-        console.error('Already retried 419 request, not retrying again.');
-        return Promise.reject(error);
-      }
-      originalRequest._retry = true;
-
-      try {
-        // Fetch a new CSRF cookie
-        console.log('Attempting to fetch new CSRF cookie after 419.');
-        await axios.get(`${BASE_URL}/sanctum/csrf-cookie`, { withCredentials: true });
-
-        // Retrieve the new token from cookies
-        const newXsrfToken = getXsrfTokenFromCookie();
-        if (newXsrfToken) {
-          // Update the header for the original request and retry
-          originalRequest.headers['X-XSRF-TOKEN'] = newXsrfToken;
-          console.log('Retrying original request with new X-XSRF-TOKEN.');
-          return api(originalRequest); // Retry the request
-        } else {
-          console.error('Failed to get new XSRF-TOKEN from cookie after refresh.');
-          throw new Error('CSRF token refresh failed.');
-        }
-      } catch (tokenRefreshError) {
-        console.error('Error refreshing CSRF token after 419:', tokenRefreshError);
-        // If token refresh fails, clear auth data and redirect to login
-        localStorage.removeItem('auth_token');
-        delete api.defaults.headers.common['Authorization'];
-        window.location.href = '/login';
-        return Promise.reject(tokenRefreshError);
-      }
+      console.error('419 CSRF Token Mismatch - This should not happen with API token authentication');
+      // Clear auth and redirect to login
+      localStorage.removeItem('auth_token');
+      delete api.defaults.headers.common['Authorization'];
+      window.location.href = '/login';
+      return Promise.reject(error);
     }
 
     // For other errors (e.g., 400, 403, 422, 500)

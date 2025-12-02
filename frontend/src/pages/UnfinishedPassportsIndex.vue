@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { useRouter } from 'vue-router';
 import moment from 'moment-jalaali';
@@ -14,6 +14,22 @@ const loading = ref<boolean>(false);
 const search = ref('');
 const filterType = ref('all');
 const importFile = ref<File | null>(null);
+
+// Pagination
+const pagination = ref({
+  page: 1,
+  rowsPerPage: 10,
+  rowsNumber: 0
+});
+
+const perPageOptions = [10, 50, 100, 0]; // 0 represents "all"
+
+const perPageLabels = {
+  10: '10',
+  50: '50', 
+  100: '100',
+  0: 'الكل'
+};
 
 const statusFilters = [
   { label: 'الكل', value: 'all' },
@@ -202,8 +218,37 @@ const handleImport = async (file: File) => {
   }
 };
 
+// Use unfinished passports directly from store
+const unfinishedPassports = computed(() => store.unfinishedPassports);
+
+// Pagination methods
+const onRequest = async (props: any) => {
+  const { page, rowsPerPage } = props.pagination;
+  loading.value = true;
+  
+  try {
+    const result = await store.fetch({
+      page,
+      per_page: rowsPerPage === 0 ? 'all' : rowsPerPage
+    });
+    
+    pagination.value.page = result.current_page;
+    pagination.value.rowsPerPage = result.per_page === 'all' ? 0 : result.per_page;
+    pagination.value.rowsNumber = result.total;
+  } catch (error) {
+    console.error('Error fetching unfinished passports:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const onPerPageChange = () => {
+  pagination.value.page = 1;
+  onRequest({ pagination: pagination.value });
+};
+
 onMounted(() => {
-  fetch();
+  onRequest({ pagination: pagination.value });
 });
 
 function getStatusColor(status: string) {
@@ -304,14 +349,31 @@ function getStatusColor(status: string) {
 
         <q-separator />
 
+        <!-- Controls Row -->
+        <div class="row items-center justify-between q-pa-md">
+          <div class="row items-center q-gutter-md">
+            <!-- Per Page Selector -->
+            <q-select
+              v-model="pagination.rowsPerPage"
+              :options="perPageOptions"
+              :option-label="(opt) => perPageLabels[opt]"
+              label="عدد العناصر"
+              dense
+              outlined
+              style="min-width: 120px"
+              @update:model-value="onPerPageChange"
+            />
+          </div>
+        </div>
+
         <q-table
           flat
           :loading="loading"
-          :rows="filteredRows"
+          :rows="unfinishedPassports"
           :columns="columns"
           row-key="id"
-          :rows-per-page-options="[0]"
-          hide-pagination
+          v-model:pagination="pagination"
+          @request="onRequest"
         >
           <template v-slot:body-cell-completion_status="props">
             <q-td :props="props">

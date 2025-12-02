@@ -124,19 +124,15 @@ const menuItems = computed(() => [
   { label: 'النظام' },
   {
     label: 'المشرفين',
-    icon: 'o_settings',
+    icon: 'o_people',
     children: [
       {
-        label: 'السمة',
+        label: 'إدارة المشرفين',
+        to: { name: 'UsersIndex' }
+      },
+      {
+        label: 'الأدوار والصلاحيات',
         to: { name: 'RolesIndex' }
-      },
-      {
-        label: 'اضافة مشرف',
-        to: { name: 'AdminsCreate' }
-      },
-      {
-        label: 'قائمة المشرفين',
-        to: { name: 'AdminsIndex' }
       }
     ]
   }
@@ -198,7 +194,8 @@ function logout() {
 
           <div class="user-section">
             <q-avatar size="36px" class="user-avatar">
-              <q-icon name="person" size="20px" />
+              <img v-if="auth.user.profile_photo_url" :src="auth.user.profile_photo_url" alt="Profile" />
+              <q-icon v-else name="person" size="20px" />
             </q-avatar>
             <div class="user-info">
               <div class="user-name">{{ auth.user.name }}</div>
@@ -206,7 +203,7 @@ function logout() {
             </div>
             <q-btn-dropdown flat dense class="user-dropdown">
               <q-list>
-                <q-item clickable v-close-popup @click="router.push({ name: 'ProfileEdit' })">
+                <q-item clickable v-close-popup @click="router.push({ name: 'Profile' })">
                   <q-item-section avatar>
                     <q-icon name="person" />
                   </q-item-section>

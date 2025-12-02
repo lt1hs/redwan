@@ -2,7 +2,7 @@
 // Add router initialization
 const router = useRouter();
 
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { usePassportsStore } from '@/stores/passports';
 import { useRouter } from 'vue-router';
@@ -37,6 +37,22 @@ const loading = ref<boolean>(false);
 const search = ref('');
 const filterType = ref('all');
 const maxProcessingDays = 7; // Maximum allowed processing days
+
+// Pagination
+const pagination = ref({
+  page: 1,
+  rowsPerPage: 10,
+  rowsNumber: 0
+});
+
+const perPageOptions = [10, 50, 100, 0]; // 0 represents "all"
+
+const perPageLabels = {
+  10: '10',
+  50: '50', 
+  100: '100',
+  0: 'الكل'
+};
 
 // Filter options
 const statusFilters = [
@@ -75,9 +91,12 @@ const formatProcessingTime = (days: number) => {
   return `${days} أيام`;
 };
 
+// Use passports directly from store for table
+const passports = computed(() => passportsStore.passports);
+
 const filteredRows = computed(() => {
-  let results = passportsStore.passports.map((row, index) => ({
-    index: index + 1,
+  let results = passportsStore.passports.map((row) => ({
+    index: row.index || 1, // Use backend-provided index
     ...row,
     processing_time: calculateProcessingTime(row.passport_delivery_date, row.delivery_timestamp),
     processing_exceeded: hasExceededProcessingTime(
@@ -382,8 +401,50 @@ function handleLetterPrint(id: number) {
   });
 }
 
+// Pagination methods
+const onRequest = async (props: any) => {
+  const { page, rowsPerPage } = props.pagination;
+  loading.value = true;
+  
+  try {
+    const result = await passportsStore.fetch({
+      page,
+      per_page: rowsPerPage === 0 ? 'all' : rowsPerPage,
+      passport_status: filterType.value !== 'all' ? getStatusValue(filterType.value) : undefined
+    });
+    
+    pagination.value.page = result.current_page;
+    pagination.value.rowsPerPage = rowsPerPage;
+    pagination.value.rowsNumber = result.total;
+  } catch (error) {
+    console.error('Error fetching passports:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const onPerPageChange = () => {
+  pagination.value.page = 1;
+  onRequest({ pagination: pagination.value });
+};
+
+// Watch for filter changes
+watch(filterType, () => {
+  pagination.value.page = 1;
+  onRequest({ pagination: pagination.value });
+});
+
+const getStatusValue = (filterValue: string) => {
+  const statusMap: Record<string, string> = {
+    'processing': 'قيد الانجاز',
+    'ready': 'جاهز للاستلام', 
+    'delivered': 'تم تسليمه'
+  };
+  return statusMap[filterValue];
+};
+
 onMounted(() => {
-  fetch();
+  onRequest({ pagination: pagination.value });
   // Check for exceeded processing time every hour
   checkExceededProcessingTime();
   setInterval(checkExceededProcessingTime, 3600000);
@@ -474,16 +535,33 @@ function getStatusColor(status: string) {
 
         <q-separator />
 
+        <!-- Controls Row -->
+        <div class="row items-center justify-between q-pa-md">
+          <div class="row items-center q-gutter-md">
+            <!-- Per Page Selector -->
+            <q-select
+              v-model="pagination.rowsPerPage"
+              :options="perPageOptions"
+              :option-label="(opt) => perPageLabels[opt]"
+              label="عدد العناصر"
+              dense
+              outlined
+              style="min-width: 120px"
+              @update:model-value="onPerPageChange"
+            />
+          </div>
+        </div>
+
         <!-- Table -->
         <q-table
           flat
           :loading="loading"
-          :rows="filteredRows"
+          :rows="passports"
           :columns="columns"
           row-key="id"
           :filter="search"
-          :rows-per-page-options="[0]"
-          hide-pagination
+          v-model:pagination="pagination"
+          @request="onRequest"
         >
           <!-- Status Cell Template -->
           <template v-slot:body-cell-passport_status="props">

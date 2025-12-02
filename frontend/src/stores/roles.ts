@@ -10,13 +10,13 @@ export const useRolesStore = defineStore('roles', () => {
     const helper = useHelper()
 
     async function fetch() {
-        const response = await api.get('/api/admin/roles');
+        const response = await api.get('/admin/roles');
         roles.value = response.data;
     }
 
     async function create(data: any) {
         try {
-            const response = await api.post('/api/admin/roles', data);
+            const response = await api.post('/admin/roles', data);
             $q.notify({
                 type: 'positive',
                 message: 'تم اضافة السمة'
@@ -29,13 +29,13 @@ export const useRolesStore = defineStore('roles', () => {
     }
 
     async function fetchDetails(id: number): Promise<any> {
-        const response = await api.get('/api/admin/roles/' + id);
+        const response = await api.get('/admin/roles/' + id);
         return response.data as any;
     }
 
     async function update(id: number, data: any) {
         try {
-            await api.put('/api/admin/roles/' + id, data);
+            await api.put('/admin/roles/' + id, data);
             $q.notify({
                 type: 'positive',
                 message: 'تم تعديل السمة'
@@ -46,7 +46,7 @@ export const useRolesStore = defineStore('roles', () => {
     }
 
     async function destroy(id: number) {
-        await api.delete('/api/admin/roles/' + id);
+        await api.delete('/admin/roles/' + id);
         $q.notify({
             color: 'green-4',
             textColor: 'white',

@@ -282,8 +282,14 @@ Route::prefix('admin')
     ->middleware(['auth:sanctum'])
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
     ->group(function () {
+        // User Management Routes
         Route::apiResource('users', UserController::class);
+        Route::post('users/{user}/assign-role', [UserController::class, 'assignRole']);
+        
+        // Role Management Routes  
         Route::apiResource('roles', RoleController::class);
+        Route::get('roles/permissions/all', [RoleController::class, 'permissions']);
+        
         Route::apiResource('permissions', PermissionController::class);
 
         // --- CONTRACTS ROUTE FIX ---
@@ -306,12 +312,13 @@ Route::prefix('admin')
         
         // Unfinished Passports Routes
         Route::post('unfinished-passports/import/excel', [\App\Http\Controllers\UnfinishedPassportController::class, 'importExcel']);
+        Route::post('unfinished-passports/create-folders', [\App\Http\Controllers\UnfinishedPassportController::class, 'createUserFolders']);
+        Route::get('unfinished-passports/{userId}/files', [\App\Http\Controllers\UnfinishedPassportController::class, 'getUserFiles']);
+        Route::post('unfinished-passports/{userId}/upload-images', [\App\Http\Controllers\UnfinishedPassportController::class, 'uploadImages']);
+        Route::post('unfinished-passports/{userId}/change-image-type', [\App\Http\Controllers\UnfinishedPassportController::class, 'changeImageType']);
+        Route::delete('unfinished-passports/{userId}/delete-image', [\App\Http\Controllers\UnfinishedPassportController::class, 'deleteImage']);
         Route::apiResource('unfinished-passports', \App\Http\Controllers\UnfinishedPassportController::class);
         Route::post('unfinished-passports/{unfinishedPassport}/convert', [\App\Http\Controllers\UnfinishedPassportController::class, 'convertToPassport']);
-    });
-
-// Temporary public route for testing import
-Route::post('admin/unfinished-passports/import/excel', [\App\Http\Controllers\UnfinishedPassportController::class, 'importExcel']);
 
         // Activity Logs
         Route::get('activity-logs', [ActivityLogController::class, 'index']);
@@ -329,27 +336,28 @@ Route::post('admin/unfinished-passports/import/excel', [\App\Http\Controllers\Un
         Route::get('cards/photos/{filename}', [CardController::class, 'showPhoto'])->name('cards.showPhoto');
         Route::get('cards/{card}/family', [CardController::class, 'getFamilyCards']);
         Route::post('cards/{card}/family', [CardController::class, 'addFamilyMember']);
+    });
 
-        // Unfinished Passports Routes
-        Route::post('unfinished-passports/import/excel', [\App\Http\Controllers\UnfinishedPassportController::class, 'importExcel']);
-        Route::apiResource('unfinished-passports', \App\Http\Controllers\UnfinishedPassportController::class);
-        Route::post('unfinished-passports/{unfinishedPassport}/convert', [\App\Http\Controllers\UnfinishedPassportController::class, 'convertToPassport']);
+// Temporary public route for testing import
+Route::post('admin/unfinished-passports/import/excel', [\App\Http\Controllers\UnfinishedPassportController::class, 'importExcel']);
 
-        // SMS Management Routes
-        Route::prefix('sms')->group(function () {
-            // Core SMS operations
-            Route::post('/send', [SmsController::class, 'send']);
-            Route::get('/logs', [SmsController::class, 'logs']);
-            Route::get('/logs/recent', [SmsController::class, 'recentLogs']);
-            Route::post('/retry/{id}', [SmsController::class, 'retry']);
-            Route::delete('/logs/{id}', [SmsController::class, 'delete']);
-            Route::get('/statistics', [SmsController::class, 'statistics']);
-            Route::get('/credit', [SmsController::class, 'credit']);
+// SMS Management Routes
+Route::prefix('sms')
+    ->middleware(['auth:sanctum'])
+    ->group(function () {
+        // Core SMS operations
+        Route::post('/send', [SmsController::class, 'send']);
+        Route::get('/logs', [SmsController::class, 'logs']);
+        Route::get('/logs/recent', [SmsController::class, 'recentLogs']);
+        Route::post('/retry/{id}', [SmsController::class, 'retry']);
+        Route::delete('/logs/{id}', [SmsController::class, 'delete']);
+        Route::get('/statistics', [SmsController::class, 'statistics']);
+        Route::get('/credit', [SmsController::class, 'credit']);
 
-            // MeliPayamak specific endpoints
-            Route::get('/status/{messageId}', [SmsController::class, 'checkStatus']);
-            Route::get('/messages', [SmsController::class, 'getMessages']);
-        });
+        // MeliPayamak specific endpoints
+        Route::get('/status/{messageId}', [SmsController::class, 'checkStatus']);
+        Route::get('/messages', [SmsController::class, 'getMessages']);
+    });
 
 // Auth Routes with CSRF protection disabled
 Route::group([], function () {
@@ -357,6 +365,21 @@ Route::group([], function () {
     Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.logout');
     Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth:sanctum')->name('api.me');
 });
+
+// Profile Routes - without CSRF middleware
+Route::options('/profile/update', function() {
+    return response('', 200);
+});
+Route::options('/profile/update-password', function() {
+    return response('', 200);
+});
+
+Route::middleware(['auth:sanctum'])
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->group(function () {
+        Route::post('/profile/update', [\App\Http\Controllers\Api\ProfileController::class, 'update']);
+        Route::post('/profile/update-password', [\App\Http\Controllers\Api\ProfileController::class, 'updatePassword']);
+    });
 
 // Add a debug route for testing file uploads
 Route::post('/test-form-upload', function (Request $request) {

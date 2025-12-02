@@ -34,8 +34,8 @@ const props = defineProps({
 });
 
 async function fetch() {
-  const response = await api.get('/api/admin/permissions');
-  permissions.value = response.data;
+  const response = await api.get('/admin/roles/permissions/all');
+  permissions.value = response.data.data;
 
   if (!props.id) {
     if (formRef.value) formRef.value.reset();

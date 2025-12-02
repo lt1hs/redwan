@@ -21,23 +21,12 @@ return [
 
     'allowed_origins' => [
         'http://91.109.114.156:5173',
-        'http://localhost:5173',
-        '*'
+        'http://localhost:5173'
     ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => [
-        'X-XSRF-TOKEN',
-        'Content-Type',
-        'X-Requested-With',
-        'Accept',
-        'Authorization',
-        'X-Custom-Header',
-        'Access-Control-Allow-Headers',
-        'Access-Control-Request-Method',
-        'Access-Control-Request-Headers',
-    ],
+    'allowed_headers' => ['*'],
 
     'exposed_headers' => [],
 

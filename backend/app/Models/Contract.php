@@ -39,8 +39,6 @@ class Contract extends Model
 
     protected $casts = [
         'contract_date' => 'date',
-        'husband_birth_date' => 'date',
-        'wife_birth_date' => 'date',
         'present_dowry' => 'decimal:2',
         'deferred_dowry' => 'decimal:2'
     ];

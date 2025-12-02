@@ -25,11 +25,35 @@ export interface UnfinishedPassport {
 export const useUnfinishedPassportsStore = defineStore('unfinishedPassports', () => {
   const unfinishedPassports = ref<UnfinishedPassport[]>([]);
 
-  async function fetch() {
+  async function fetch(params: Record<string, any> = {}) {
     try {
-      const response = await axios.get('/api/unfinished-passports-public');
-      unfinishedPassports.value = Array.isArray(response.data) ? response.data : [];
-      return response.data;
+      const response = await axios.get('/api/unfinished-passports-public', {
+        params: {
+          ...params,
+          per_page: params.per_page || 10,
+          page: params.page || 1
+        }
+      });
+      
+      if (params.per_page === 'all') {
+        unfinishedPassports.value = Array.isArray(response.data.data) ? response.data.data : Array.isArray(response.data) ? response.data : [];
+        return { 
+          data: unfinishedPassports.value, 
+          total: unfinishedPassports.value.length,
+          current_page: 1,
+          last_page: 1,
+          per_page: 'all'
+        };
+      } else {
+        unfinishedPassports.value = Array.isArray(response.data.data) ? response.data.data : Array.isArray(response.data) ? response.data : [];
+        return {
+          data: unfinishedPassports.value,
+          total: response.data.total || unfinishedPassports.value.length,
+          current_page: response.data.current_page || 1,
+          last_page: response.data.last_page || 1,
+          per_page: response.data.per_page || params.per_page || 10
+        };
+      }
     } catch (error) {
       unfinishedPassports.value = [];
       throw error;
@@ -43,9 +67,31 @@ export const useUnfinishedPassportsStore = defineStore('unfinishedPassports', ()
   }
 
   async function update(id: number, data: FormData) {
-    const response = await axios.post(`/api/unfinished-passports-public/${id}`, data);
-    await fetch();
-    return response.data;
+    const token = localStorage.getItem('auth_token');
+    
+    // Debug: Log what we're sending
+    console.log('Sending FormData entries:');
+    for (let [key, value] of data.entries()) {
+      console.log(`${key}:`, value);
+    }
+    
+    const response = await window.fetch(`http://91.109.114.156:8000/api/admin/unfinished-passports/${id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: data
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Backend error response:', errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('Backend response:', result);
+    return result;
   }
 
   async function destroy(id: number) {
@@ -76,8 +122,19 @@ export const useUnfinishedPassportsStore = defineStore('unfinishedPassports', ()
   }
 
   async function fetchById(id: number) {
-    const response = await axios.get(`/api/unfinished-passports-public/${id}`);
-    return response.data;
+    const token = localStorage.getItem('auth_token');
+    const response = await window.fetch(`http://91.109.114.156:8000/api/admin/unfinished-passports/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
   }
 
   return {

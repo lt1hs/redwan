@@ -3,65 +3,89 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class RoleController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        return Role::get(['id', 'name']);
+        if (!auth()->user()->can('view-roles')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        $roles = Role::with('permissions')->get();
+        return response()->json(['data' => $roles]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        $request->validate(['name' => ['required', 'string', 'max:255']]);
+        if (!auth()->user()->can('create-roles')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        $validated = $request->validate([
+            'name' => 'required|string|unique:roles',
+            'permissions' => 'array',
+            'permissions.*' => 'exists:permissions,name'
+        ]);
 
-        return DB::transaction(function () use ($request) {
-
-            $role = Role::create(['name' => $request->name]);
-
-            $role->syncPermissions($request->permissions);
-
-            return $role;
-        });
+        $role = Role::create(['name' => $validated['name']]);
+        
+        if (isset($validated['permissions'])) {
+            $role->givePermissionTo($validated['permissions']);
+        }
+        
+        return response()->json(['data' => $role->load('permissions')], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Role $role)
     {
-        return $role->load('permissions');
+        if (!auth()->user()->can('view-roles')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        return response()->json(['data' => $role->load('permissions')]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Role $role)
     {
-        $request->validate(['name' => ['required', 'string', 'max:255']]);
+        if (!auth()->user()->can('edit-roles')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        $validated = $request->validate([
+            'name' => 'required|string|unique:roles,name,' . $role->id,
+            'permissions' => 'array',
+            'permissions.*' => 'exists:permissions,name'
+        ]);
 
-        return DB::transaction(function () use ($request, $role) {
-            $role->syncPermissions($request->permissions);
-
-            return $role->update(['name' => $request->name]);
-        });
+        $role->update(['name' => $validated['name']]);
+        
+        if (isset($validated['permissions'])) {
+            $role->syncPermissions($validated['permissions']);
+        }
+        
+        return response()->json(['data' => $role->load('permissions')]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Role $role)
     {
-        return $role->delete();
+        if (!auth()->user()->can('delete-roles')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        if (in_array($role->name, ['super-admin', 'admin', 'employee'])) {
+            return response()->json(['message' => 'Cannot delete system roles'], 403);
+        }
+        
+        $role->delete();
+        return response()->noContent();
+    }
+
+    public function permissions()
+    {
+        $permissions = Permission::all();
+        return response()->json(['data' => $permissions]);
     }
 }

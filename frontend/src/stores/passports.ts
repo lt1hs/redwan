@@ -119,19 +119,32 @@ export const usePassportsStore = defineStore('passports', () => {
   async function fetch(params: Record<string, any> = {}) {
     try {
       const response = await api.get(`/admin/passports`, {
-        params,
+        params: {
+          ...params,
+          per_page: params.per_page || 10,
+          page: params.page || 1
+        }
       });
 
-      // *** THIS IS THE KEY CHANGE ***
-      // Safely access data, assuming it's either directly in response.data (simple array)
-      // or nested under response.data.data (common with Laravel Resource Collections)
-      // Or an empty array if both are null/undefined.
-      passports.value = response.data.data || response.data || [];
-      
-      console.log('Fetched passports data:', passports.value); // Added for debug
-
-
-      return response;
+      if (params.per_page === 'all') {
+        passports.value = response.data.data || response.data || [];
+        return { 
+          data: passports.value, 
+          total: passports.value.length,
+          current_page: 1,
+          last_page: 1,
+          per_page: 'all'
+        };
+      } else {
+        passports.value = response.data.data || response.data || [];
+        return {
+          data: passports.value,
+          total: response.data.total || passports.value.length,
+          current_page: response.data.current_page || 1,
+          last_page: response.data.last_page || 1,
+          per_page: response.data.per_page || params.per_page || 10
+        };
+      }
     } catch (error) {
       console.error('Fetch passports error:', error); // More specific error log
       helper.handleServerError(error);

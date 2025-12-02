@@ -18,15 +18,26 @@ class PassportController extends Controller
             if ($status === 'تم تسليمه') {
                 $query->where('passport_status', 'تم تسليمه');
             } else {
-                // If a status is provided but it's not 'تم تسليمه',
-                // you might want to return an empty set or filter by the provided status.
-                // For this task, we only care about 'تم تسليمه'.
-                // For now, I'll make it filter by the provided status if it's not 'تم تسليمه'.
                 $query->where('passport_status', $status);
             }
         }
 
-        return $query->get();
+        $perPage = $request->input('per_page', 10);
+        if ($perPage === 'all') {
+            $passports = $query->get();
+            // Add index to each passport
+            $passports->each(function ($passport, $index) {
+                $passport->index = $index + 1;
+            });
+            return response()->json(['data' => $passports]);
+        }
+
+        $passports = $query->paginate((int)$perPage);
+        // Add index to each passport based on pagination
+        $passports->getCollection()->each(function ($passport, $index) use ($passports) {
+            $passport->index = (($passports->currentPage() - 1) * $passports->perPage()) + $index + 1;
+        });
+        return response()->json($passports);
     }
 
     public function store(Request $request)

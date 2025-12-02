@@ -9,9 +9,26 @@ use Illuminate\Support\Str;
 
 class UnfinishedPassportController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return UnfinishedPassport::orderBy('created_at', 'desc')->get();
+        $query = UnfinishedPassport::orderBy('created_at', 'desc');
+
+        $perPage = $request->input('per_page', 10);
+        if ($perPage === 'all') {
+            $passports = $query->get();
+            // Add index to each passport
+            $passports->each(function ($passport, $index) {
+                $passport->index = $index + 1;
+            });
+            return response()->json(['data' => $passports]);
+        }
+
+        $passports = $query->paginate((int)$perPage);
+        // Add index to each passport based on pagination
+        $passports->getCollection()->each(function ($passport, $index) use ($passports) {
+            $passport->index = (($passports->currentPage() - 1) * $passports->perPage()) + $index + 1;
+        });
+        return response()->json($passports);
     }
 
     public function store(Request $request)
@@ -45,13 +62,21 @@ class UnfinishedPassportController extends Controller
             'full_name' => 'nullable|string',
             'nationality' => 'nullable|string',
             'passport_number' => 'nullable|string',
+            'passport_id' => 'nullable|string',
             'date_of_birth' => 'nullable|date',
             'residence_expiry_date' => 'nullable|date',
             'phone_number' => 'nullable|string',
             'mobile_number' => 'nullable|string',
             'transaction_type' => 'nullable|string',
+            'residence_authority' => 'nullable|string',
             'address' => 'nullable|string',
+            'governorate' => 'nullable|string',
             'zipcode' => 'nullable|string',
+            'najacode' => 'nullable|string',
+            'personal_photo' => 'nullable|string',
+            'passport_photo' => 'nullable|string',
+            'residence_photo' => 'nullable|string',
+            'passport_extension_photo' => 'nullable|string',
             'notes' => 'nullable|string',
             'completion_status' => 'nullable|in:مسودة,قيد المراجعة,جاهز للنقل'
         ]);
@@ -214,5 +239,156 @@ class UnfinishedPassportController extends Controller
         $unfinishedPassport->delete();
 
         return response()->json(['message' => 'تم نقل الجواز بنجاح', 'passport' => $passport]);
+    }
+
+    public function createUserFolders()
+    {
+        try {
+            $unfinishedPassports = UnfinishedPassport::all();
+            $created = 0;
+            
+            foreach ($unfinishedPassports as $passport) {
+                $userFolder = public_path('storage/users/' . $passport->id);
+                
+                if (!file_exists($userFolder)) {
+                    mkdir($userFolder, 0755, true);
+                    $created++;
+                    
+                    // Create subfolders for different image types
+                    mkdir($userFolder . '/personal', 0755, true);
+                    mkdir($userFolder . '/passport', 0755, true);
+                    mkdir($userFolder . '/residence', 0755, true);
+                    mkdir($userFolder . '/extension', 0755, true);
+                }
+            }
+            
+            return response()->json(['message' => "تم إنشاء {$created} مجلد مستخدم"]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'خطأ في إنشاء المجلدات: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getUserFiles($userId)
+    {
+        try {
+            $userFolder = public_path('storage/users/' . $userId);
+            $files = [];
+            
+            if (file_exists($userFolder)) {
+                $subfolders = ['personal', 'passport', 'residence', 'extension'];
+                
+                foreach ($subfolders as $subfolder) {
+                    $subfolderPath = $userFolder . '/' . $subfolder;
+                    if (file_exists($subfolderPath)) {
+                        $folderFiles = array_diff(scandir($subfolderPath), ['.', '..']);
+                        foreach ($folderFiles as $file) {
+                            $files[] = [
+                                'name' => $file,
+                                'type' => $subfolder,
+                                'url' => '/storage/users/' . $userId . '/' . $subfolder . '/' . $file,
+                                'full_url' => url('/storage/users/' . $userId . '/' . $subfolder . '/' . $file)
+                            ];
+                        }
+                    }
+                }
+            }
+            
+            return response()->json(['files' => $files]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'خطأ في قراءة ملفات المستخدم: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function uploadImages(Request $request, $userId)
+    {
+        try {
+            $request->validate([
+                'images.*' => 'required|file|mimes:jpeg,jpg,png,pdf|max:5120'
+            ]);
+
+            $userFolder = public_path('storage/users/' . $userId);
+            
+            if (!file_exists($userFolder)) {
+                mkdir($userFolder, 0755, true);
+                foreach (['personal', 'passport', 'residence', 'extension'] as $subfolder) {
+                    mkdir($userFolder . '/' . $subfolder, 0755, true);
+                }
+            }
+
+            $uploadedFiles = [];
+            
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $index => $file) {
+                    $filename = time() . '_' . $index . '_' . $file->getClientOriginalName();
+                    
+                    // Upload all files to personal folder by default
+                    $destinationPath = $userFolder . '/personal';
+                    $file->move($destinationPath, $filename);
+                    
+                    $uploadedFiles[] = [
+                        'name' => $filename,
+                        'type' => 'personal',
+                        'url' => '/storage/users/' . $userId . '/personal/' . $filename
+                    ];
+                }
+            }
+
+            return response()->json([
+                'message' => 'تم رفع ' . count($uploadedFiles) . ' ملف بنجاح',
+                'files' => $uploadedFiles
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'خطأ في رفع الملفات: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function changeImageType(Request $request, $userId)
+    {
+        try {
+            $request->validate([
+                'filename' => 'required|string',
+                'old_type' => 'required|in:personal,passport,residence,extension',
+                'new_type' => 'required|in:personal,passport,residence,extension'
+            ]);
+
+            $userFolder = public_path('storage/users/' . $userId);
+            $oldPath = $userFolder . '/' . $request->old_type . '/' . $request->filename;
+            $newPath = $userFolder . '/' . $request->new_type . '/' . $request->filename;
+            
+            if (!file_exists($userFolder . '/' . $request->new_type)) {
+                mkdir($userFolder . '/' . $request->new_type, 0755, true);
+            }
+
+            if (file_exists($oldPath)) {
+                rename($oldPath, $newPath);
+                return response()->json(['message' => 'تم تغيير نوع الصورة بنجاح']);
+            } else {
+                return response()->json(['error' => 'الملف غير موجود'], 404);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'خطأ في تغيير نوع الصورة: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function deleteImage(Request $request, $userId)
+    {
+        try {
+            $request->validate([
+                'filename' => 'required|string',
+                'type' => 'required|in:personal,passport,residence,extension'
+            ]);
+
+            $userFolder = public_path('storage/users/' . $userId);
+            $filePath = $userFolder . '/' . $request->type . '/' . $request->filename;
+
+            if (file_exists($filePath)) {
+                unlink($filePath);
+                return response()->json(['message' => 'تم حذف الملف بنجاح']);
+            } else {
+                return response()->json(['error' => 'الملف غير موجود'], 404);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'خطأ في حذف الملف: ' . $e->getMessage()], 500);
+        }
     }
 }
