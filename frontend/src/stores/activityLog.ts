@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { ActivityLog, ActivityLogResponse, ActivityLogFilter, User } from '@/types/activity';
-import axios from '@/plugins/axios';
+import { api } from '@/boot/axios';
 import { useQuasar } from 'quasar';
 import { useHelper } from '@/composables/helper';
 
@@ -16,7 +16,7 @@ export const useActivityLogStore = defineStore('activityLog', () => {
   ): Promise<ActivityLogResponse> {
     loading.value = true;
     try {
-      const response = await axios.get<ActivityLogResponse>('/admin/activity-logs', { params });
+      const response = await api.get<ActivityLogResponse>('/admin/activity-logs', { params });
       activities.value = response.data.data;
       return response.data;
     } catch (error) {
@@ -28,12 +28,12 @@ export const useActivityLogStore = defineStore('activityLog', () => {
   }
 
   async function fetchUsers(): Promise<User[]> {
-    const response = await axios.get<{ data: User[] }>('/admin/users');
+    const response = await api.get<{ data: User[] }>('/admin/users');
     return response.data.data;
   }
 
   async function exportLogs(filter: ActivityLogFilter): Promise<void> {
-    const response = await axios.get('/admin/activity-logs/export', {
+    const response = await api.get('/admin/activity-logs/export', {
       params: filter,
       responseType: 'blob'
     });
@@ -53,7 +53,7 @@ export const useActivityLogStore = defineStore('activityLog', () => {
     description: string;
     details?: any;
   }): Promise<void> {
-    await axios.post('/admin/activity-logs', data);
+    await api.post('/admin/activity-logs', data);
   }
 
   return {

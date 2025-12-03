@@ -86,6 +86,9 @@ const columns = [
 ];
 
 const formattedActivities = computed(() => {
+  if (!Array.isArray(activities.value)) {
+    return [];
+  }
   return activities.value.map((activity) => ({
     ...activity,
     created_at: formatDateTime(activity.created_at),
@@ -128,7 +131,7 @@ async function fetchActivities() {
       ...filter.value
     });
 
-    activities.value = response.data || [];
+    activities.value = Array.isArray(response.data) ? response.data : [];
 
     if (response.meta) {
       pagination.value.rowsNumber = response.meta.total;
@@ -137,6 +140,7 @@ async function fetchActivities() {
     }
   } catch (error) {
     console.error('Error fetching activities:', error);
+    activities.value = []; // Ensure it's always an array
     $q.notify({
       type: 'negative',
       message: 'حدث خطأ أثناء تحميل سجل النشاط'

@@ -32,8 +32,16 @@ class ActivityLogController extends Controller
             })
             ->latest();
 
+        $paginated = $query->paginate($request->per_page ?? 10);
+
         return response()->json([
-            'data' => $query->paginate($request->per_page ?? 10),
+            'data' => $paginated->items(),
+            'meta' => [
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage()
+            ]
         ]);
     }
 
