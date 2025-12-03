@@ -93,7 +93,7 @@ class CardController extends Controller
                 'card_type' => 'required|string|in:personal,wife,son,daughter',
                 'personal_photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
                 'passport_photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-                'parent_card_id' => 'required_if:card_type,son,daughter,wife|exists:cards,id',
+                'parent_card_id' => 'nullable|exists:cards,id',
                 'national_id' => 'required|string|max:255'
             ]);
 

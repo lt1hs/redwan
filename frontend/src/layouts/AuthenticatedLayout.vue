@@ -123,6 +123,11 @@ const menuItems = computed(() => [
 
   { label: 'النظام' },
   {
+    label: 'المستخدمين',
+    icon: 'o_group',
+    to: { name: 'AllUsersIndex' }
+  },
+  {
     label: 'المشرفين',
     icon: 'o_people',
     children: [

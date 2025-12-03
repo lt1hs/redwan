@@ -11,6 +11,7 @@ use App\Http\Controllers\PublicApiController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SliderController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AllUsersController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Resources\PostResource;
@@ -285,6 +286,7 @@ Route::prefix('admin')
         // User Management Routes
         Route::apiResource('users', UserController::class);
         Route::post('users/{user}/assign-role', [UserController::class, 'assignRole']);
+        Route::get('all-users', [AllUsersController::class, 'index']);
         
         // Role Management Routes  
         Route::apiResource('roles', RoleController::class);

@@ -589,6 +589,15 @@ const router = createRouter({
           name: 'UsersIndex'
         },
         {
+          path: '/all-users',
+          meta: {
+            breadCrumbTitle: 'جميع المستخدمين',
+            breadCrumbIcon: 'o_group'
+          },
+          component: () => import('@/pages/AllUsersIndex.vue'),
+          name: 'AllUsersIndex'
+        },
+        {
           path: 'roles',
           meta: {
             breadCrumbTitle: 'الأدوار',
