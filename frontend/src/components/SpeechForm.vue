@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useSpeechStore } from '@/stores/speech';
 import { useField, useForm } from 'vee-validate';
@@ -30,10 +30,7 @@ const schema = yup.object({
   recipient: yup.string().required('المستلم مطلوب'),
   content: yup.string().required('محتوى الخطاب مطلوب'),
   paper_size: yup.string().required('حجم الورق مطلوب'),
-  template_image: yup.mixed(),
-  header_image: yup.mixed(),
-  footer_image: yup.mixed(),
-  signature_image: yup.mixed()
+  template_type: yup.string()
 });
 
 const { handleSubmit, errors, setValues } = useForm({
@@ -44,20 +41,22 @@ const { value: title } = useField('title');
 const { value: recipient } = useField('recipient');
 const { value: content } = useField('content');
 const { value: paper_size } = useField('paper_size');
-const { value: template_image } = useField('template_image');
-const { value: header_image } = useField('header_image');
-const { value: footer_image } = useField('footer_image');
-const { value: signature_image } = useField('signature_image');
+const { value: template_type } = useField('template_type');
 
 const loading = ref(false);
 const editor = ref<Editor | null>(null);
-const templatePreviewUrl = ref('');
-const showPreviewDialog = ref(false);
 
 const paperSizes = [
   { label: 'A4', value: 'A4' },
   { label: 'A3', value: 'A3' }
 ];
+
+const templateOptions = computed(() => {
+  return Object.entries(speechStore.templates).map(([key, template]) => ({
+    label: template.name,
+    value: key
+  }));
+});
 
 async function fetch() {
   if (!props.id) return;
@@ -65,12 +64,12 @@ async function fetch() {
   loading.value = true;
   try {
     const speech = await speechStore.get(props.id);
-
     setValues({
       title: speech.title,
       recipient: speech.recipient,
       content: speech.content,
-      paper_size: speech.paper_size
+      paper_size: speech.paper_size,
+      template_type: speech.template_type
     });
 
     if (editor.value) {
@@ -112,35 +111,31 @@ function initEditor() {
   });
 }
 
-function onTemplateUpload(file: File) {
-  if (file) {
-    templatePreviewUrl.value = URL.createObjectURL(file);
+function applyTemplate() {
+  if (!template_type.value || !speechStore.templates[template_type.value]) return;
+  
+  const template = speechStore.templates[template_type.value];
+  const templateContent = template.content_template
+    .replace('{recipient}', recipient.value || '[المستلم]')
+    .replace('{content}', '[محتوى الخطاب]');
+  
+  if (editor.value) {
+    editor.value.commands.setContent(templateContent);
   }
 }
 
-function openPreview() {
-  showPreviewDialog.value = true;
-}
-
-onMounted(() => {
-  // Initialize editor
+onMounted(async () => {
   initEditor();
-
-  // Set default values
   paper_size.value = 'A4';
+  
+  try {
+    await speechStore.fetchTemplates();
+  } catch (error) {
+    console.error('Error loading templates:', error);
+  }
 
   if (props.id) {
     fetch();
-  }
-});
-
-onBeforeUnmount(() => {
-  if (templatePreviewUrl.value) {
-    URL.revokeObjectURL(templatePreviewUrl.value);
-  }
-  if (editor.value) {
-    editor.value.destroy();
-    editor.value = null;
   }
 });
 
@@ -177,95 +172,42 @@ defineExpose({
         />
       </div>
 
-      <div class="col-12">
-        <div class="row q-col-gutter-md">
-          <div class="col-12 col-md-6">
-            <q-file
-              outlined
-              v-model="template_image"
-              label="قالب الصفحة (A4)"
-              accept=".jpg,.jpeg,.png"
-              :error="!!errors.template_image"
-              :error-message="errors.template_image"
-              @update:model-value="onTemplateUpload"
-            >
-              <template v-slot:prepend>
-                <q-icon name="o_file_upload" />
-              </template>
-              <template v-slot:after>
-                <q-btn
-                  v-if="templatePreviewUrl"
-                  flat
-                  round
-                  color="primary"
-                  icon="o_preview"
-                  @click="openPreview"
-                >
-                  <q-tooltip>معاينة القالب</q-tooltip>
-                </q-btn>
-              </template>
-            </q-file>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <q-select
-              outlined
-              v-model="paper_size"
-              :options="paperSizes"
-              label="حجم الورق *"
-              :error="!!errors.paper_size"
-              :error-message="errors.paper_size"
-              emit-value
-              map-options
-            />
-          </div>
-        </div>
+      <div class="col-12 col-md-4">
+        <q-select
+          outlined
+          v-model="template_type"
+          :options="templateOptions"
+          label="نوع القالب"
+          emit-value
+          map-options
+          clearable
+          @update:model-value="applyTemplate"
+        />
       </div>
 
-      <!-- <div class="col-12 col-md-6">
-        <q-file
+      <div class="col-12 col-md-4">
+        <q-select
           outlined
-          v-model="header_image"
-          label="صورة الترويسة"
-          accept=".jpg,.jpeg,.png"
-          :error="!!errors.header_image"
-          :error-message="errors.header_image"
-        >
-          <template v-slot:prepend>
-            <q-icon name="attach_file" />
-          </template>
-        </q-file>
-      </div> -->
+          v-model="paper_size"
+          :options="paperSizes"
+          label="حجم الورق *"
+          :error="!!errors.paper_size"
+          :error-message="errors.paper_size"
+          emit-value
+          map-options
+        />
+      </div>
 
-      <!-- <div class="col-12 col-md-6">
-        <q-file
-          outlined
-          v-model="footer_image"
-          label="صورة التذييل"
-          accept=".jpg,.jpeg,.png"
-          :error="!!errors.footer_image"
-          :error-message="errors.footer_image"
-        >
-          <template v-slot:prepend>
-            <q-icon name="attach_file" />
-          </template>
-        </q-file>
-      </div> -->
-
-      <!-- <div class="col-12 col-md-6">
-        <q-file
-          outlined
-          v-model="signature_image"
-          label="صورة التوقيع"
-          accept=".jpg,.jpeg,.png"
-          :error="!!errors.signature_image"
-          :error-message="errors.signature_image"
-        >
-          <template v-slot:prepend>
-            <q-icon name="attach_file" />
-          </template>
-        </q-file>
-      </div> -->
+      <div class="col-12 col-md-4">
+        <q-btn
+          v-if="template_type"
+          color="secondary"
+          icon="o_refresh"
+          label="تطبيق القالب"
+          @click="applyTemplate"
+          outline
+        />
+      </div>
 
       <div class="col-12">
         <div class="text-subtitle1 q-mb-sm">محتوى الخطاب *</div>
@@ -274,36 +216,6 @@ defineExpose({
           {{ errors.content }}
         </div>
       </div>
-
-      <q-dialog v-model="showPreviewDialog" maximized>
-        <q-card class="column full-height">
-          <q-card-section class="row items-center q-pb-none">
-            <div class="text-h6">معاينة قالب الصفحة</div>
-            <q-space />
-            <q-btn icon="close" flat round dense v-close-popup />
-          </q-card-section>
-
-          <q-card-section class="col q-pa-lg">
-            <div class="row justify-center">
-              <div class="col-auto">
-                <div class="template-preview">
-                  <img :src="templatePreviewUrl" alt="قالب الصفحة" />
-                </div>
-              </div>
-            </div>
-          </q-card-section>
-
-          <q-card-actions align="right" class="bg-white">
-            <q-btn flat label="إغلاق" color="primary" v-close-popup />
-            <q-btn
-              color="primary"
-              label="طباعة"
-              icon="o_print"
-              @click="$q.dialog({ message: 'سيتم تنفيذ الطباعة قريباً' })"
-            />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
     </div>
   </div>
 </template>
@@ -313,34 +225,5 @@ defineExpose({
   direction: rtl;
   position: relative;
   min-height: 200px;
-}
-
-.template-preview {
-  max-width: 100%;
-  overflow: auto;
-  background: #f5f5f5;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-
-  img {
-    width: 21cm; // A4 width
-    height: 29.7cm; // A4 height
-    background: white;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-  }
-}
-
-@media print {
-  .template-preview {
-    padding: 0;
-    box-shadow: none;
-
-    img {
-      width: 100%;
-      height: auto;
-      box-shadow: none;
-    }
-  }
 }
 </style>

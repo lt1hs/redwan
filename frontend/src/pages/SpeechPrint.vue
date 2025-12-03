@@ -1,5 +1,54 @@
+<template>
+  <q-page class="q-pa-md speech-page-print-container">
+    <div class="q-mx-auto screen-only-container">
+      <base-breadcrumbs />
+      <q-card flat bordered class="creation-card q-pa-lg">
+        <q-card-section class="q-pb-none">
+          <div class="text-h5 text-weight-bold q-mb-md row items-center">
+            <q-icon name="o_description" color="primary" size="32px" class="q-mr-sm" />
+            طباعة الخطاب / Print Speech
+          </div>
+        </q-card-section>
+
+        <q-card-section v-if="speech" class="q-pa-lg text-right" dir="rtl">
+          <div class="speech-print-area" dir="rtl">
+            <img src="/a4_template.jpg.png" class="speech-template-background" />
+            <div class="speech-data-overlay">
+              <div class="speech-title">{{ speech.title }}</div>
+              <div class="speech-date">التاريخ: {{ currentDate }}</div>
+              <div class="speech-recipient">إلى: {{ speech.recipient }}</div>
+              <div class="speech-content" v-html="speech.content"></div>
+              <div v-if="showSignature" class="speech-signature">التوقيع</div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <div v-else-if="loading" class="q-pa-xl text-center">
+          <q-spinner-dots size="40px" color="primary" />
+        </div>
+
+        <q-card-actions align="right" class="q-pt-lg">
+          <q-btn
+            color="primary"
+            label="طباعة"
+            icon="print"
+            @click="printSpeech"
+            :disable="loading || !speech"
+          />
+          <q-btn
+            color="negative"
+            flat
+            label="العودة"
+            @click="router.go(-1)"
+          />
+        </q-card-actions>
+      </q-card>
+    </div>
+  </q-page>
+</template>
+
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useSpeechStore } from '@/stores/speech';
@@ -13,28 +62,7 @@ const id = ref(Number(route.params.id));
 const speech = ref(null);
 const loading = ref(true);
 const currentDate = new Date().toLocaleDateString('ar-SA');
-
-// Print settings
-const showHeader = ref(true);
-const showFooter = ref(true);
 const showSignature = ref(true);
-const showDate = ref(true);
-
-const paperStyles = computed(() => {
-  if (speech.value && speech.value.paper_size === 'A3') {
-    return {
-      width: '297mm',
-      height: '420mm',
-      padding: '20mm'
-    };
-  }
-  // Default A4
-  return {
-    width: '210mm',
-    height: '297mm',
-    padding: '15mm'
-  };
-});
 
 async function fetchSpeech() {
   try {
@@ -61,221 +89,189 @@ onMounted(() => {
 });
 </script>
 
-<template>
-  <q-page>
-    <div class="non-printable">
-      <base-breadcrumbs />
-      <div class="q-pa-md">
-        <q-card flat bordered class="q-mb-md">
-          <q-card-section class="q-px-lg">
-            <div class="row items-center justify-between q-mb-md">
-              <div class="text-h6 text-primary">معاينة وطباعة الخطاب</div>
-              <div class="row q-gutter-sm">
-                <q-btn
-                  color="grey"
-                  icon="o_arrow_back"
-                  label="العودة للقائمة"
-                  flat
-                  :to="{ name: 'SpeechIndex' }"
-                />
-                <q-btn color="primary" icon="o_print" label="طباعة" @click="printSpeech" />
-                <q-btn
-                  color="secondary"
-                  icon="o_edit"
-                  label="تعديل"
-                  :to="{ name: 'SpeechEdit', params: { id } }"
-                />
-              </div>
-            </div>
-
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-3">
-                <q-select
-                  outlined
-                  dense
-                  v-model="speech.paper_size"
-                  :options="['A4', 'A3']"
-                  label="حجم الورق"
-                  disable
-                />
-              </div>
-              <div class="col-12 col-md-9">
-                <div class="row q-col-gutter-md">
-                  <div class="col-12 col-sm-3">
-                    <q-toggle v-model="showHeader" label="إظهار الترويسة" />
-                  </div>
-                  <div class="col-12 col-sm-3">
-                    <q-toggle v-model="showFooter" label="إظهار التذييل" />
-                  </div>
-                  <div class="col-12 col-sm-3">
-                    <q-toggle v-model="showSignature" label="إظهار التوقيع" />
-                  </div>
-                  <div class="col-12 col-sm-3">
-                    <q-toggle v-model="showDate" label="إظهار التاريخ" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <q-card v-if="!loading && speech" flat bordered class="print-preview">
-          <q-card-section class="paper" :style="paperStyles">
-            <!-- Header -->
-            <div v-if="showHeader && speech.header_image_url" class="header">
-              <img :src="speech.header_image_url" alt="Header" />
-            </div>
-
-            <!-- Content -->
-            <div class="content">
-              <div class="title">{{ speech.title }}</div>
-
-              <div v-if="showDate" class="date">التاريخ: {{ currentDate }}</div>
-
-              <div class="recipient">إلى: {{ speech.recipient }}</div>
-
-              <div class="speech-content" v-html="speech.content"></div>
-
-              <div v-if="showSignature" class="signature">
-                <div class="signature-text">التوقيع</div>
-                <img
-                  v-if="speech.signature_image_url"
-                  :src="speech.signature_image_url"
-                  alt="Signature"
-                />
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div v-if="showFooter && speech.footer_image_url" class="footer">
-              <img :src="speech.footer_image_url" alt="Footer" />
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <div v-else-if="loading" class="full-width row flex-center q-pa-xl">
-          <q-spinner-dots size="40px" color="primary" />
-        </div>
-      </div>
-    </div>
-  </q-page>
-</template>
-
 <style lang="scss" scoped>
-.non-printable {
-  @media print {
-    display: none;
-  }
+.creation-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.print-preview {
-  background-color: #f5f5f5;
-  padding: 2rem;
-
-  @media print {
-    padding: 0;
-    background: none;
-  }
-}
-
-.paper {
-  background-color: white;
-  margin: 0 auto;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+.speech-print-area {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
   position: relative;
+
+  width: 210mm;
+  height: 297mm;
+  margin: 40px auto;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+  background-color: white;
   overflow: hidden;
-  direction: rtl;
+
+  .speech-template-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+
+  .speech-data-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    font-family: 'Vazirmatn', sans-serif;
+    color: black;
+    text-align: right;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .speech-title {
+    position: absolute;
+    top: calc(800 / 3508 * 100%);
+    left: calc(300 / 2480 * 100%);
+    width: calc(1880 / 2480 * 100%);
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+
+  .speech-date {
+    position: absolute;
+    top: calc(900 / 3508 * 100%);
+    left: calc(1600 / 2480 * 100%);
+    width: calc(580 / 2480 * 100%);
+  }
+
+  .speech-recipient {
+    position: absolute;
+    top: calc(1000 / 3508 * 100%);
+    left: calc(300 / 2480 * 100%);
+    width: calc(800 / 2480 * 100%);
+    font-weight: bold;
+  }
+
+  .speech-content {
+    position: absolute;
+    top: calc(1150 / 3508 * 100%);
+    left: calc(300 / 2480 * 100%);
+    width: calc(1880 / 2480 * 100%);
+    height: calc(1800 / 3508 * 100%);
+    overflow: hidden;
+    text-align: justify;
+    line-height: 1.6;
+
+    ::v-deep(p) {
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .speech-signature {
+    position: absolute;
+    top: calc(3000 / 3508 * 100%);
+    left: calc(1600 / 2480 * 100%);
+    width: calc(580 / 2480 * 100%);
+    text-align: center;
+  }
 
   @media print {
-    box-shadow: none;
-    margin: 0;
-    padding: 0;
-  }
-}
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
 
-.header {
-  text-align: center;
-  margin-bottom: 2rem;
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
 
-  img {
-    max-width: 100%;
-    max-height: 100px;
-    object-fit: contain;
-  }
-}
+    #q-app {
+      display: none !important;
+      visibility: hidden !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
 
-.content {
-  min-height: 70%;
-}
+    .speech-page-print-container {
+      display: block !important;
+      visibility: visible !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 2480px !important;
+      height: 3508px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: none !important;
+      overflow: hidden !important;
+    }
 
-.title {
-  font-size: 24px;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 2rem;
-  color: var(--q-primary);
-}
+    .screen-only-container {
+      display: none !important;
+      visibility: hidden !important;
+    }
 
-.date {
-  text-align: left;
-  margin-bottom: 1.5rem;
-  color: var(--q-secondary);
-}
+    .speech-print-area {
+      display: block !important;
+      visibility: visible !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 2480px !important;
+      height: 3508px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      background-color: white !important;
+      overflow: hidden !important;
+    }
 
-.recipient {
-  font-weight: bold;
-  margin-bottom: 2rem;
-}
+    .speech-print-area * {
+      visibility: visible !important;
+      display: block !important;
+    }
 
-.speech-content {
-  margin-bottom: 3rem;
-  line-height: 1.8;
-  text-align: justify;
+    .speech-template-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
 
-  ::v-deep(p) {
-    margin-bottom: 1rem;
-  }
-}
+    .speech-data-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      font-size: 11pt;
+      line-height: 1.4;
+      z-index: 1;
+    }
 
-.signature {
-  text-align: left;
-  margin-top: 3rem;
-
-  .signature-text {
-    margin-bottom: 1rem;
-    color: var(--q-secondary);
-  }
-
-  img {
-    max-height: 80px;
-    max-width: 200px;
-    object-fit: contain;
-  }
-}
-
-.footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  text-align: center;
-  padding: 1rem;
-
-  img {
-    max-width: 100%;
-    max-height: 80px;
-    object-fit: contain;
-  }
-}
-
-@media print {
-  @page {
-    size: auto;
-    margin: 0mm;
-  }
-
-  body {
-    margin: 0;
+    body,
+    html,
+    .q-layout,
+    .q-page-container {
+      margin: 0 !important;
+      padding: 0 !important;
+      min-height: unset !important;
+      height: auto !important;
+      overflow: hidden !important;
+    }
   }
 }
 </style>

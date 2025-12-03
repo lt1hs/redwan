@@ -80,13 +80,7 @@ const getImagePreview = (file: File | null, existingUrl: string | null) => {
   return null;
 };
 
-const transactionTypes = [
-  'تجديد جواز',
-  'جواز جديد',
-  'تعديل بيانات',
-  'استبدال جواز تالف',
-  'أخرى'
-];
+const transactionTypes = computed(() => store.transactionTypeOptions);
 
 const formRules = {
   full_name: [(val: string) => !!val || 'الاسم الكامل مطلوب'],
@@ -429,11 +423,34 @@ const saveImageToBackend = async (fieldName: string, imageData: string | File, s
             <div class="col-md-6 col-12">
               <q-input
                 v-model="form.residence_expiry_date"
-                label="تاريخ انتهاء الإقامة"
-                type="date"
+                label="تاريخ انتهاء الإقامة (تاریخ خورشیدی)"
                 outlined
                 dense
-              />
+                placeholder="1403/09/15"
+                mask="####/##/##"
+              >
+                <template v-slot:append>
+                  <q-icon name="event" class="cursor-pointer">
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-date
+                        v-model="form.residence_expiry_date"
+                        calendar="persian"
+                        mask="YYYY/MM/DD"
+                        :locale="{
+                          months: ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'],
+                          monthsShort: ['فرو', 'ارد', 'خرد', 'تیر', 'مرد', 'شهر', 'مهر', 'آبا', 'آذر', 'دی', 'بهم', 'اسف'],
+                          days: ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'],
+                          daysShort: ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش']
+                        }"
+                      >
+                        <div class="row items-center justify-end">
+                          <q-btn v-close-popup label="تأكيد" color="primary" flat />
+                        </div>
+                      </q-date>
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
             </div>
           </div>
 

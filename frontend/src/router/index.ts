@@ -212,19 +212,24 @@ const router = createRouter({
               },
               component: () => import('@/pages/PassDeliveredIndex.vue'),
               name: 'PassDeliveredIndex'
-            },
-            // Add new routes for passport cards
+            }
+          ]
+        },
+        // Cards section (moved out of passports)
+        {
+          path: '/cards',
+          meta: {
+            breadCrumbTitle: 'البطاقات',
+            breadCrumbIcon: 'o_credit_card'
+          },
+          children: [
             {
-              path: 'cards',
-              meta: {
-                breadCrumbTitle: 'البطاقات',
-                breadCrumbIcon: 'o_credit_card'
-              },
+              path: '',
               component: () => import('@/pages/PassCardIndex.vue'),
               name: 'PassCardIndex'
             },
             {
-              path: 'cards/create',
+              path: 'create',
               meta: {
                 breadCrumbTitle: 'إنشاء بطاقة',
                 breadCrumbIcon: 'o_add_card'
@@ -233,7 +238,7 @@ const router = createRouter({
               name: 'PassCardCreate'
             },
             {
-              path: 'cards/:id/edit',
+              path: ':id/edit',
               meta: {
                 breadCrumbTitle: 'تعديل بطاقة',
                 breadCrumbIcon: 'o_edit'
@@ -243,7 +248,7 @@ const router = createRouter({
               props: true
             },
             {
-              path: 'cards/:id/family/add',
+              path: ':id/family/add',
               meta: {
                 breadCrumbTitle: 'إضافة عضو عائلة',
                 breadCrumbIcon: 'o_group_add'
@@ -253,23 +258,13 @@ const router = createRouter({
               props: true
             },
             {
-              path: 'cards/:id/print',
+              path: ':id/print',
               meta: {
                 breadCrumbTitle: 'طباعة بطاقة',
                 breadCrumbIcon: 'o_print'
               },
               component: () => import('@/pages/PassCardPrint.vue'),
               name: 'PassCardPrint',
-              props: true
-            },
-            {
-              path: ':id/letter-print',
-              meta: {
-                breadCrumbTitle: 'طباعة خطاب رسمي',
-                breadCrumbIcon: 'o_description'
-              },
-              component: () => import('@/pages/PassLetterPrint.vue'), // Assuming this component will be created
-              name: 'PassLetterPrint',
               props: true
             }
           ]

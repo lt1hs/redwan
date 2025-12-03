@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\CardController;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Admin\SmsController;
+use App\Http\Controllers\SpeechController;
 
 // PUBLIC ROUTES - NO MIDDLEWARE
 Route::get('unfinished-passports-public', [\App\Http\Controllers\UnfinishedPassportController::class, 'index']);
@@ -405,3 +406,10 @@ Route::post('/test-form-upload', function (Request $request) {
         'content_type' => $request->header('Content-Type'),
     ]);
 })->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
+// SPEECH ROUTES
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('speech-templates', [SpeechController::class, 'getTemplates']);
+    Route::apiResource('speeches', SpeechController::class);
+    Route::post('speeches/{speech}/duplicate', [SpeechController::class, 'duplicate']);
+});

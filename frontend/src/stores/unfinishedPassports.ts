@@ -24,6 +24,15 @@ export interface UnfinishedPassport {
 
 export const useUnfinishedPassportsStore = defineStore('unfinishedPassports', () => {
   const unfinishedPassports = ref<UnfinishedPassport[]>([]);
+  
+  const transactionTypeOptions = [
+    'إصدار اقامة',
+    'تمديد اقامة',
+    'تمديد 3 ماه',
+    'خروجية',
+    'خروج قطعى',
+    'اخرى'
+  ];
 
   async function fetch(params: Record<string, any> = {}) {
     try {
@@ -139,6 +148,7 @@ export const useUnfinishedPassportsStore = defineStore('unfinishedPassports', ()
 
   return {
     unfinishedPassports,
+    transactionTypeOptions,
     fetch,
     fetchById,
     create,

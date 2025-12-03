@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import axios from '@/plugins/axios';
+import { api } from '@/boot/axios';
 
 interface Speech {
   id: number;
@@ -7,6 +7,7 @@ interface Speech {
   recipient: string;
   content: string;
   paper_size: 'A4' | 'A3';
+  template_type?: string;
   header_image_url?: string;
   footer_image_url?: string;
   signature_image_url?: string;
@@ -14,9 +15,17 @@ interface Speech {
   updated_at: string;
 }
 
+interface Template {
+  name: string;
+  header: string;
+  content_template: string;
+  footer: string;
+}
+
 interface State {
   speeches: Speech[];
   speech: Speech | null;
+  templates: Record<string, Template>;
   loading: boolean;
   error: any;
 }
@@ -25,15 +34,27 @@ export const useSpeechStore = defineStore('speech', {
   state: (): State => ({
     speeches: [],
     speech: null,
+    templates: {},
     loading: false,
     error: null
   }),
 
   actions: {
+    async fetchTemplates() {
+      try {
+        const response = await api.get('/speech-templates');
+        this.templates = response.data;
+        return response.data;
+      } catch (error) {
+        this.error = error;
+        throw error;
+      }
+    },
+
     async fetch(params = {}) {
       this.loading = true;
       try {
-        const response = await axios.get<{ speeches: Speech[] }>('/api/speeches', { params });
+        const response = await api.get('/speeches', { params });
         this.speeches = response.data.speeches;
         return response.data;
       } catch (error) {
@@ -47,7 +68,7 @@ export const useSpeechStore = defineStore('speech', {
     async get(id: number) {
       this.loading = true;
       try {
-        const response = await axios.get<Speech>(`/api/speeches/${id}`);
+        const response = await api.get(`/speeches/${id}`);
         this.speech = response.data;
         return response.data;
       } catch (error) {
@@ -58,25 +79,10 @@ export const useSpeechStore = defineStore('speech', {
       }
     },
 
-    async create(
-      data: Partial<Speech> & Record<string, File | string | number | null | undefined>
-    ) {
+    async create(data: Partial<Speech>) {
       this.loading = true;
       try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value instanceof File) {
-            formData.append(key, value);
-          } else if (value !== undefined && value !== null) {
-            formData.append(key, String(value));
-          }
-        });
-
-        const response = await axios.post<Speech>('/api/speeches', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
+        const response = await api.post('/speeches', data);
         return response.data;
       } catch (error) {
         this.error = error;
@@ -86,26 +92,10 @@ export const useSpeechStore = defineStore('speech', {
       }
     },
 
-    async update(
-      id: number,
-      data: Partial<Speech> & Record<string, File | string | number | null | undefined>
-    ) {
+    async update(id: number, data: Partial<Speech>) {
       this.loading = true;
       try {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value instanceof File) {
-            formData.append(key, value);
-          } else if (value !== undefined && value !== null) {
-            formData.append(key, String(value));
-          }
-        });
-
-        const response = await axios.post<Speech>(`/api/speeches/${id}`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
+        const response = await api.put(`/speeches/${id}`, data);
         return response.data;
       } catch (error) {
         this.error = error;
@@ -118,8 +108,21 @@ export const useSpeechStore = defineStore('speech', {
     async delete(id: number) {
       this.loading = true;
       try {
-        await axios.delete(`/api/speeches/${id}`);
+        await api.delete(`/speeches/${id}`);
         this.speeches = this.speeches.filter((speech) => speech.id !== id);
+      } catch (error) {
+        this.error = error;
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async duplicate(id: number) {
+      this.loading = true;
+      try {
+        const response = await api.post(`/speeches/${id}/duplicate`);
+        return response.data;
       } catch (error) {
         this.error = error;
         throw error;

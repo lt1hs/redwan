@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { useSpeechStore } from '@/stores/speech';
 import { useRouter } from 'vue-router';
-import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue';
 
 const router = useRouter();
 const $q = useQuasar();
@@ -38,6 +37,13 @@ const columns: QTableColumn[] = [
     align: 'right'
   },
   {
+    label: 'نوع القالب',
+    name: 'template_type',
+    field: 'template_type',
+    sortable: true,
+    align: 'right'
+  },
+  {
     label: 'حجم الورق',
     name: 'paper_size',
     field: 'paper_size',
@@ -61,6 +67,7 @@ const columns: QTableColumn[] = [
 ];
 
 const search = ref('');
+const templateFilter = ref('');
 const loading = ref(true);
 const pagination = ref({
   sortBy: 'created_at',
@@ -70,10 +77,22 @@ const pagination = ref({
   rowsNumber: 10
 });
 
+const templateOptions = computed(() => {
+  const options = [{ label: 'جميع القوالب', value: '' }];
+  Object.entries(speechStore.templates).forEach(([key, template]) => {
+    options.push({ label: template.name, value: key });
+  });
+  return options;
+});
+
 async function fetch() {
   loading.value = true;
   try {
-    await speechStore.fetch();
+    const params: any = {};
+    if (search.value) params.search = search.value;
+    if (templateFilter.value) params.template_type = templateFilter.value;
+    
+    await speechStore.fetch(params);
   } catch (error) {
     console.error('Error fetching speeches:', error);
     $q.notify({
@@ -99,7 +118,28 @@ function handlePrint(id: number) {
   });
 }
 
-onMounted(() => {
+async function handleDuplicate(id: number) {
+  try {
+    await speechStore.duplicate(id);
+    $q.notify({
+      type: 'positive',
+      message: 'تم نسخ الخطاب بنجاح.'
+    });
+    fetch();
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'حدث خطأ أثناء نسخ الخطاب.'
+    });
+  }
+}
+
+onMounted(async () => {
+  try {
+    await speechStore.fetchTemplates();
+  } catch (error) {
+    console.error('Error loading templates:', error);
+  }
   fetch();
 });
 </script>
@@ -120,19 +160,33 @@ onMounted(() => {
             />
           </div>
 
-          <div class="row items-center q-mb-md">
-            <q-input
-              outlined
-              dense
-              debounce="300"
-              v-model="search"
-              placeholder="البحث في الخطابات"
-              class="col-12 col-md-4"
-            >
-              <template v-slot:append>
-                <q-icon name="search" />
-              </template>
-            </q-input>
+          <div class="row items-center q-mb-md q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input
+                outlined
+                dense
+                debounce="300"
+                v-model="search"
+                placeholder="البحث في الخطابات"
+                @update:model-value="fetch"
+              >
+                <template v-slot:append>
+                  <q-icon name="search" />
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-4">
+              <q-select
+                outlined
+                dense
+                v-model="templateFilter"
+                :options="templateOptions"
+                label="فلترة حسب القالب"
+                emit-value
+                map-options
+                @update:model-value="fetch"
+              />
+            </div>
           </div>
 
           <q-table
@@ -141,10 +195,23 @@ onMounted(() => {
             :rows="rows"
             :columns="columns"
             row-key="id"
-            :filter="search"
             v-model:pagination="pagination"
             :rows-per-page-options="[10, 25, 50, 100]"
           >
+            <template v-slot:body-cell-template_type="props">
+              <q-td :props="props">
+                <q-chip
+                  v-if="props.row.template_type && speechStore.templates[props.row.template_type]"
+                  color="info"
+                  text-color="white"
+                  size="sm"
+                >
+                  {{ speechStore.templates[props.row.template_type].name }}
+                </q-chip>
+                <span v-else class="text-grey">بدون قالب</span>
+              </q-td>
+            </template>
+
             <template v-slot:body-cell-paper_size="props">
               <q-td :props="props">
                 <q-chip
@@ -178,6 +245,16 @@ onMounted(() => {
                   color="secondary"
                 >
                   <q-tooltip>طباعة</q-tooltip>
+                </q-btn>
+                <q-btn
+                  @click="handleDuplicate(props.row.id)"
+                  icon="o_content_copy"
+                  round
+                  dense
+                  flat
+                  color="info"
+                >
+                  <q-tooltip>نسخ</q-tooltip>
                 </q-btn>
                 <q-btn
                   icon="o_delete"

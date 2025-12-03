@@ -11,7 +11,7 @@ const route = useRoute();
       <q-breadcrumbs-el
         v-for="(breadcrumb, index) in route.matched"
         :key="index"
-        :label="breadcrumb.meta.title || breadcrumb.name"
+        :label="breadcrumb.meta.breadCrumbTitle || breadcrumb.meta.title || breadcrumb.name"
         :to="breadcrumb.path"
       />
     </q-breadcrumbs>
