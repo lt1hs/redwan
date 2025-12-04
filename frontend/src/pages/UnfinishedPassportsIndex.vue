@@ -50,15 +50,6 @@ const filteredRows = computed(() => {
     ...row
   }));
 
-  if (search.value) {
-    const searchLower = search.value.toLowerCase();
-    results = results.filter(
-      (row) =>
-        row.full_name?.toLowerCase().includes(searchLower) ||
-        row.passport_number?.toLowerCase().includes(searchLower)
-    );
-  }
-
   if (filterType.value !== 'all') {
     results = results.filter((row) => row.completion_status === filterType.value);
   }
@@ -229,7 +220,8 @@ const onRequest = async (props: any) => {
   try {
     const result = await store.fetch({
       page,
-      per_page: rowsPerPage === 0 ? 'all' : rowsPerPage
+      per_page: rowsPerPage === 0 ? 'all' : rowsPerPage,
+      search: search.value || undefined
     });
     
     pagination.value.page = result.current_page;
@@ -243,6 +235,11 @@ const onRequest = async (props: any) => {
 };
 
 const onPerPageChange = () => {
+  pagination.value.page = 1;
+  onRequest({ pagination: pagination.value });
+};
+
+const onSearch = () => {
   pagination.value.page = 1;
   onRequest({ pagination: pagination.value });
 };
@@ -328,6 +325,7 @@ function getStatusColor(status: string) {
                 v-model="search"
                 placeholder="البحث بالاسم أو رقم الجواز"
                 style="min-width: 300px"
+                @update:model-value="onSearch"
               >
                 <template v-slot:append>
                   <q-icon name="search" />

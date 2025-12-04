@@ -13,6 +13,18 @@ class UnfinishedPassportController extends Controller
     {
         $query = UnfinishedPassport::orderBy('created_at', 'desc');
 
+        // Add search functionality
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('full_name', 'like', "%{$search}%")
+                  ->orWhere('passport_number', 'like', "%{$search}%")
+                  ->orWhere('nationality', 'like', "%{$search}%")
+                  ->orWhere('mobile_number', 'like', "%{$search}%")
+                  ->orWhere('phone_number', 'like', "%{$search}%");
+            });
+        }
+
         $perPage = $request->input('per_page', 10);
         if ($perPage === 'all') {
             $passports = $query->get();
